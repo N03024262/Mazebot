@@ -1,6 +1,8 @@
 import RPi.GPIO as GPIO
 import time
 from time import sleep
+speed = .25
+pulse = True
 GPIO.setmode(GPIO.BOARD)
 pin = [22, 32, 29, 31, 15, 13, 11, 7]
 run = True
@@ -42,8 +44,9 @@ def forward():
     GPIO.output(MRA,GPIO.HIGH)
     GPIO.output(MRB,GPIO.LOW)
     print("Motors set forward confirm")
-    sleep(.1)
-    stopAll()
+    if pulse == True:
+        sleep(speed)
+        stopAll()
 
 def setBackward():
     print("Motors set backward try")
@@ -65,8 +68,9 @@ def adjustLeft():
     GPIO.output(MRA,GPIO.HIGH)
     GPIO.output(MRB,GPIO.LOW)
     print("Motors set left adjust confirm")
-    sleep(.1)
-    stopAll()
+    if pulse == True:
+        sleep(speed)
+        stopAll()
 
 
 def adjustRight():
@@ -77,8 +81,9 @@ def adjustRight():
 
     GPIO.output(MRE,GPIO.LOW)
     print("Motors set right adjust confirm")
-    sleep(.1)
-    stopAll()
+    if pulse == True:
+        sleep(speed)
+        stopAll()
 
 
 def turnRight():
