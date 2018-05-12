@@ -83,36 +83,88 @@ def stopAll():
     print("Motors set stop confirm")
 
 def readSensors():
-    reading = raw_input("Enter sensor bar reading:")
-    return reading
+    return ReadAllAcurate
 
+
+# This follows the line and changes the state if it thinks it got to an intersection
 def followLine():
+    global state
+    global intersection
     reading = readSensors()
 
-    if reading = "10000000"
+    # These are for staying on the line
+    if reading == "10000000":
         adjustLeft()
-    else if reading = "11000000"
+    if reading == "11000000":
         adjustLeft()
-    else if reading = "01100000"
+    if reading == "11100000":
         adjustLeft()
-    else if reading = "00110000"
+    if reading == "01100000":
         adjustLeft()
-    else if reading = "00011000"
+    if reading == "01110000":
+        adjustLeft()
+    if reading == "00110000":
+        adjustLeft()
+    if reading == "00111000":
         setForward()
-    else if reading = "00001100"
+    if reading == "00011000":
+        setForward()
+    if reading == "00011100":
+        setForward()
+    if reading == "00001100":
         adjustRight()
-    else if reading = "00000110"
+    if reading == "00001110":
         adjustRight()
-    else if reading = "00000011"
+    if reading == "00000110":
         adjustRight()
-    else if reading = "00000001"
+    if reading == "00000111":
         adjustRight()
+    if reading == "00000011":
+        adjustRight()
+    if reading == "00000001":
+        adjustRight()
+    if reading == "11111000":
+        stopAll()
+        intersection = "L"
+        state = "CheckIntersection"
+    if reading == "11111111":
+        stopAll()
+        intersection = "LR"
+        state = "CheckIntersection"
+    if reading == "00011111":
+        stopAll()
+        intersection = "R"
+        state = "CheckIntersection"
+
+def checkIntersectionForF():
+    global intersection
+    reading = readSensor()
+    if reading != "00000000":
+        intersection = intersection + "F"
 
 
+
+
+
+# Global values. I should change this later when I'm better with python
+state = "FollowLine"
+intersection = ""
+
+# This code runs when run.py is started
 if __name__ == "__main__":
+    global state
     starttime = time.time()
-    while (time.time() - starttime) > 10:
-        followLine()
-    GPIO.cleanup()
-    
+    while state != "End":
+        if state == "FollowLine":
+            followLine()
+        if state == "CheckIntersection":
+            setForward()
+            sleep(1)
+            allStop()
+            checkIntersectionForF()
+            print(intersection)
+            state = "End"
 
+        # if (time.time() - starttime) > 10 # This is used to stop the program after it runs for 10 seconds
+        #     state = "End"
+    GPIO.cleanup()
