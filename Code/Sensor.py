@@ -1,10 +1,66 @@
-import RPi.GPIO as GPIO
+# Empty space so I don't have to crane my neck to look up high.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# # This is commented out so the code can be run without using the bot
+# import RPi.GPIO as GPIO
+# GPIO.setmode(GPIO.BOARD)
+# # Uncomment this to run the bot
+
+runWithBot = False # Set to true to make the bot move, set to false to run code as theoretical
+
 import time
 from time import sleep
-speed = .25
-pulse = True
-GPIO.setmode(GPIO.BOARD)
-pin = [22, 32, 29, 31, 15, 13, 11, 7]
+
+pulse = True # Controls if movement functions stop after a brief period of running
+pulseTime = .25 # Controls the amount of time movement functions run for when pulsing
+
+pin = [22, 32, 29, 31, 15, 13, 11, 7] # Pins for the sensor bar
 run = True
 threshold = 0.01045 # The maximum value that can be white as opposed to black
 readColors = True # When true ReadAll() will return the color values (0 = White, 1 = Black) and when False ReadAll() will return time data
@@ -13,6 +69,8 @@ readColors = True # When true ReadAll() will return the color values (0 = White,
 
 # Global values. I should change this later when I'm better with python
 state = "FollowLine"
+path = ""
+
 intersection = ""
 
 MLE = 40 # Motor Left E
@@ -23,103 +81,210 @@ MRE = 33 # Motor Right E
 MRA = 35 # Motor Right A
 MRB = 37 # Motor Right B
 
-def gpioSetup():
-    print("GPIO pins set up try")
-    GPIO.setup(MLE,GPIO.OUT)
-    GPIO.setup(MLA,GPIO.OUT)
-    GPIO.setup(MLB,GPIO.OUT)
+# ======= Motor Functions =======
+def gpioSetup(): # Run this at start to set up the GPIO pins for the motors
+    if runWithBot == True:
+        GPIO.setup(MLE,GPIO.OUT)
+        GPIO.setup(MLA,GPIO.OUT)
+        GPIO.setup(MLB,GPIO.OUT)
 
-    GPIO.setup(MRE,GPIO.OUT)
-    GPIO.setup(MRA,GPIO.OUT)
-    GPIO.setup(MRB,GPIO.OUT)
-    print("GPIO pins set up confirm")
+        GPIO.setup(MRE,GPIO.OUT)
+        GPIO.setup(MRA,GPIO.OUT)
+        GPIO.setup(MRB,GPIO.OUT)
+        print("GPIO pins set up")
+    else:
+        print("GPIO pins would be set up here")
 
-def forward():
-    print("Motors set forward try")
-    GPIO.output(MLE,GPIO.HIGH)
-    GPIO.output(MLA,GPIO.HIGH)
-    GPIO.output(MLB,GPIO.LOW)
-    
-    GPIO.output(MRE,GPIO.HIGH)
-    GPIO.output(MRA,GPIO.HIGH)
-    GPIO.output(MRB,GPIO.LOW)
-    print("Motors set forward confirm")
-    if pulse == True:
-        sleep(speed)
-        stopAll()
+def gpioCleanup():
+    if runWithBot == True:
+        GPIO.cleanup()
+        print("GPIO pins cleaned up")
+    else:
+        print("GPIO pins would be cleaned up here")
 
-def setBackward():
-    print("Motors set backward try")
-    GPIO.output(MLE,GPIO.HIGH)
-    GPIO.output(MLA,GPIO.LOW)
-    GPIO.output(MLB,GPIO.HIGH)
-    
-    GPIO.output(MRE,GPIO.HIGH)
-    GPIO.output(MRA,GPIO.LOW)
-    GPIO.output(MRB,GPIO.HIGH)
-    print("Motors set backward confirm")
+def forward(): # Sets motors to forward, if pulse is true it will stop shortly after
+    if runWithBot == True:
+        GPIO.output(MLE,GPIO.HIGH)
+        GPIO.output(MLA,GPIO.HIGH)
+        GPIO.output(MLB,GPIO.LOW)
+        
+        GPIO.output(MRE,GPIO.HIGH)
+        GPIO.output(MRA,GPIO.HIGH)
+        GPIO.output(MRB,GPIO.LOW)
+        print("Motors set forward")
+        if pulse == True:
+            sleep(pulseTime)
+            stopAll()
+    else:
+        print("Move forward")
 
-    
+def backward(): # Sets motors to backward, if pulse is true it will stop shortly after
+    if runWithBot == True:
+        GPIO.output(MLE,GPIO.HIGH)
+        GPIO.output(MLA,GPIO.LOW)
+        GPIO.output(MLB,GPIO.HIGH)
+        
+        GPIO.output(MRE,GPIO.HIGH)
+        GPIO.output(MRA,GPIO.LOW)
+        GPIO.output(MRB,GPIO.HIGH)
+        print("Motors set backward")
+        if pulse == True:
+            sleep(pulseTime)
+            stopAll()
+    else:
+        print("Move backward")
+
 def adjustLeft():
-    print("Motors set left adjust try")
-    GPIO.output(MLE,GPIO.LOW)
-    
-    GPIO.output(MRE,GPIO.HIGH)
-    GPIO.output(MRA,GPIO.HIGH)
-    GPIO.output(MRB,GPIO.LOW)
-    print("Motors set left adjust confirm")
-    if pulse == True:
-        sleep(speed)
-        stopAll()
-
+    if runWithBot == True:
+        GPIO.output(MLE,GPIO.LOW)
+        
+        GPIO.output(MRE,GPIO.HIGH)
+        GPIO.output(MRA,GPIO.HIGH)
+        GPIO.output(MRB,GPIO.LOW)
+        print("Motors adjust left")
+        if pulse == True:
+            sleep(pulseTime)
+            stopAll()
+    else:
+        print("Adjust left")
 
 def adjustRight():
-    print("Motors set right adjust try")
-    GPIO.output(MLE,GPIO.HIGH)
-    GPIO.output(MLA,GPIO.HIGH)
-    GPIO.output(MLB,GPIO.LOW)
+    if runWithBot == True:
+        GPIO.output(MLE,GPIO.HIGH)
+        GPIO.output(MLA,GPIO.HIGH)
+        GPIO.output(MLB,GPIO.LOW)
 
-    GPIO.output(MRE,GPIO.LOW)
-    print("Motors set right adjust confirm")
-    if pulse == True:
-        sleep(speed)
-        stopAll()
-
+        GPIO.output(MRE,GPIO.LOW)
+        print("Motors adjust right")
+        if pulse == True:
+            sleep(pulseTime)
+            stopAll()
+    else:
+        print("Adjust right")
 
 def turnRight():
-    print("Motors set right turn try")
-    GPIO.output(MLE,GPIO.HIGH)
-    GPIO.output(MLA,GPIO.HIGH)
-    GPIO.output(MLB,GPIO.LOW)
-    
-    GPIO.output(MRE,GPIO.HIGH)
-    GPIO.output(MRA,GPIO.LOW)
-    GPIO.output(MRB,GPIO.HIGH)
-    print("Motors set right turn confirm")
+    if runWithBot == True:
+        GPIO.output(MLE,GPIO.HIGH)
+        GPIO.output(MLA,GPIO.HIGH)
+        GPIO.output(MLB,GPIO.LOW)
+        
+        GPIO.output(MRE,GPIO.HIGH)
+        GPIO.output(MRA,GPIO.LOW)
+        GPIO.output(MRB,GPIO.HIGH)
+        print("Motors turn right")
+    else:
+        print("Turn right")
 
+def turnLeft():
+    if runWithBot == True:
+        GPIO.output(MLE,GPIO.HIGH)
+        GPIO.output(MLA,GPIO.LOW)
+        GPIO.output(MLB,GPIO.HIGH)
+        
+        GPIO.output(MRE,GPIO.HIGH)
+        GPIO.output(MRA,GPIO.HIGH)
+        GPIO.output(MRB,GPIO.LOW)
+        print("Motors turn left")
+    else:
+        print("Turn left")
 
 def stopAll():
-    print("Motors set stop try")
-    GPIO.output(MLE,GPIO.LOW)
-    GPIO.output(MRE,GPIO.LOW)
-    print("Motors set stop confirm")
+    if runWithBot == True:
+        GPIO.output(MLE,GPIO.LOW)
+        GPIO.output(MRE,GPIO.LOW)
+        print("Motors set stop")
+    else:
+        print("Stop")
+# ===== End Motor Functions =====
 
+# ======= Sensor Functions =======
 def readSensors():
-    readingArray = ReadAllAccurate()
-    readingString = ""
+    if runWithBot == True:
+        readingArray = ReadAllAccurate()
+        readingString = ""
+        for i in range(0,8):
+            readingString = readingString + str(readingArray[i])
+        printReading(readingArray)
+        return readingString
+    else:
+        manualReading = input("Enter a sensor reading: ")
+        return manualReading
+
+def ReadAll(): # This function returns readings from the light sensor
+
+    # Reset readings.
+    reading = [99, 99, 99, 99, 99, 99, 99, 99]
+    check = [False, False, False, False, False, False, False, False]
+    
+    # Set all sensor pins to output
+    for pin in range(0,8):
+        GPIO.setup(pins[pin], GPIO.OUT)
+    
+    # Drive the output high, charging the capacitor
+    for pin in range(0,8):
+        GPIO.output(pins[pin], True)
+
+    # Wait for the capacitor to charge.
+    time.sleep(0.01)
+
+    # Set pins to input
+    for pin in range(0,8):
+        GPIO.setup(pins[pin], GPIO.IN)
+    
+    # Record the starting time
+    starttime = time.time()
+    
+    # This loop runs until every sensor reads low
+    while (check[0] and check[1] and check[2] and check[3] and check[4] and check[5] and check[6] and check[7]) == False:
+        for i in range(0,8):
+            if GPIO.input(pins[i]) == False and check[i] == False:
+                endtime = time.time()
+                if endtime - starttime < reading[i]:
+                    reading[i] = endtime - starttime
+                    check[i] = True
+    # This compares all of the readings to the time threshold (Found at top of file)
+    # to tell if it sees black or white and returns an array of 1's and 0's
+    if readColors == True:
+        colors = [0, 0, 0, 0, 0, 0, 0, 0]
+        for i in range(0,8):
+            if reading[i] < threshold:
+                colors[i] = 0
+            else:
+                colors[i] = 1
+        return colors
+    # This returns the raw timings recorded by the sensor.
+    # This is helpful for changing the threshold
+    else:
+        return reading
+
+def ReadAllAccurate():
+    # This checks the sensor 3 times to make sure it is getting the right reading 
+    # before returning data. Does not check if returning times instead of colors
+
+    while readColors: # loops until all three readings are the same.
+        reading1 = ReadAll()
+        reading2 = ReadAll()
+        reading3 = ReadAll()
+        if reading1 == reading2 and reading2 == reading3:
+            return reading1
+
+    # Just returns the raw times from one check when not returning colors.
+    return ReadAll()
+
+def printReading(reading):
+    print("Readings:")
     for i in range(0,8):
-        readingString = readingString + str(readingArray[i])
-    print(readingString)
-    printReading(readingArray)
-    return readingString
+        print("Sensor " + str(i) + " = " + str(reading[i]))
+# ===== End Sensor Functions =====
 
+# ======= State Functions =======
 
-# This follows the line and changes the state if it thinks it got to an intersection
 def followLine():
+    # This follows the line and changes the state if it thinks it got to an intersection or
+    # the finish.
+    global state
     reading = readSensors()
-
-    # These are for staying on the line
-
+    # ///// These are for staying on the line /////
     # ----- Adjust cases for 1 black -----
     # Adjust left
     if reading == "10000000":
@@ -176,101 +341,156 @@ def followLine():
         adjustRight()
     elif reading == "00000111":
         adjustRight()
+
+    # ----- Cases where an intersection may be there -----
+    # Intersection with left choice
+    elif reading == "11110000":
+        makeDecision(reading)
+    elif reading == "11111000":
+        makeDecision(reading)
+    # Intersection with left and right choice
+    elif reading == "11111111":
+        makeDecision(reading)
+    # Intersection with right choice
+    elif reading == "00011111":
+        makeDecision(reading)
+    elif reading == "00001111":
+        makeDecision(reading)
+    # Came to the end of the line
+    elif reading == "00000000":
+        makeDecision(reading)
+
+    # ----- End state cases -----
+    elif reading == "10000001":
+        state = "Finish"
+    elif reading == "11000001":
+        state = "Finish"
+    elif reading == "10000011":
+        state = "Finish"
+    elif reading == "11000011":
+        state = "Finish"
     
+    elif reading == "10001001":
+        state = "Finish"
+    elif reading == "11001001":
+        state = "Finish"
+    elif reading == "10001011":
+        state = "Finish"
+    elif reading == "11001011":
+        state = "Finish"
+        
+    elif reading == "10010001":
+        state = "Finish"
+    elif reading == "11010001":
+        state = "Finish"
+    elif reading == "10010011":
+        state = "Finish"
+    elif reading == "11010011":
+        state = "Finish"
+
+    elif reading == "10011001":
+        state = "Finish"
+    elif reading == "11011001":
+        state = "Finish"
+    elif reading == "10011011":
+        state = "Finish"
+    elif reading == "11011011":
+        state = "Finish"
+
+    # Used for manual testing to end the maze solving loop
+    elif reading == "end":
+        state = "Finish"
     # Handles unexpected results
     else:
         stopAll()
-# -----------
+        print("Encountered an unknown result")
+# ===== End State Functions =====
 
-def ReadAll():
-    
-    #Set your chosen pin to an output
-    GPIO.setup(pin[0], GPIO.OUT)
-    GPIO.setup(pin[1], GPIO.OUT)
-    GPIO.setup(pin[2], GPIO.OUT)
-    GPIO.setup(pin[3], GPIO.OUT)
-    GPIO.setup(pin[4], GPIO.OUT)
-    GPIO.setup(pin[5], GPIO.OUT)
-    GPIO.setup(pin[6], GPIO.OUT)
-    GPIO.setup(pin[7], GPIO.OUT)
-    
-    #Drive the output high, charging the capacitor
-    GPIO.output(pin[0], True)
-    GPIO.output(pin[1], True)
-    GPIO.output(pin[2], True)
-    GPIO.output(pin[3], True)
-    GPIO.output(pin[4], True)
-    GPIO.output(pin[5], True)
-    GPIO.output(pin[6], True)
-    GPIO.output(pin[7], True)
-    
-    # set the start time and reset readings.
-    starttime = time.time()
-    reading = [99, 99, 99, 99, 99, 99, 99, 99]
-    check = [False, False, False, False, False, False, False, False]
-    
-    #wait for the cap to charge.
-    time.sleep(0.01)
+# ======= Decision Functions =======
+def makeDecision(reading):
+    global path
 
-    # set pin to input
-    GPIO.setup(pin[0], GPIO.IN)
-    GPIO.setup(pin[1], GPIO.IN)
-    GPIO.setup(pin[2], GPIO.IN)
-    GPIO.setup(pin[3], GPIO.IN)
-    GPIO.setup(pin[4], GPIO.IN)
-    GPIO.setup(pin[5], GPIO.IN)
-    GPIO.setup(pin[6], GPIO.IN)
-    GPIO.setup(pin[7], GPIO.IN)
+    if reading == "00000000":
+        makeUTurn()
+        path = path + "U"
+        print("Path taken was updated by adding choice U")
+        print("Path: " + path)
     
-    while (check[0] and check[1] and check[2] and check[3] and check[4] and check[5] and check[6] and check[7]) == False:
-        for i in range(0,8):
-            if GPIO.input(pin[i]) == False and check[i] == False:
-                endtime = time.time()
-                if endtime - starttime < reading[i]:
-                    reading[i] = endtime - starttime
-                    check[i] = True
-
-    colors = [0, 0, 0, 0, 0, 0, 0, 0]
-    for i in range(0,8):
-        if reading[i] < threshold:
-            colors[i] = 0
+    # ----- Intersections with left choice and/or straight option
+    elif reading == "11110000" or reading == "11111000":
+        if checkForS() == True:
+            print("Options given are: Left and Straight")
+            makeLeftTurn()
+            path = path + "L"
+            print("Path taken was updated by adding choice L")
+            print("Path: " + path)
         else:
-            colors[i] = 1
+            print("Options given are: Left")
+            makeLeftTurn()
+            print("Left turn was taken but path was not update sind L was only option.")
+    # ----- Intersections with left and right and maybe straight
+    elif reading == "11111111":
+        if checkForS() == True:
+            print("Options given are: Left, Right, and Straight")
+            makeLeftTurn()
+            path = path + "L"
+            print("Path taken was updated by adding choice L")
+            print("Path: " + path)
+        else:
+            print("Options given are: Left and Right")
+            makeLeftTurn()
+            path = path + "L"
+            print("Path taken was updated by adding choice L")
+            print("Path: " + path)
+    # ----- Intersections with right and maybe straight
+    elif reading == "00011111" or reading == "00001111":
+        if checkForS() == True:
+            print("Options given are: Right and Straight")
+            makeStraight()
+            path = path + "S"
+            print("Path taken was updated by adding choice S")
+            print("Path: " + path)
+        else:
+            print("Options given are: Right")
+            makeRightTurn()
+            print("Left turn was taken but path was not update sind R was only option.")
 
-    
-    if readColors == True:
-        return colors
+    # Handles unexpected results.
     else:
-        return reading
+        print("Encountered an unknown result but it should have already been caught...")
 
-def ReadAllAccurate():
+def followPath(reading):
+    pass
+
+def checkForS():
+    isS = input("Is straight an option?\n(y/n): ")
+    if isS == "y":
+        return True
+    elif isS == "n":
+        return False
+    else:
+        print("Please enter a valid answer")
+        return checkForS()
+
+def makeUTurn():
+    input("Please turn me around and press Enter to continue")
+
+def makeStraight():
+    input("Please move me slightly forward onto the S option and press Enter to continue")
+
+def makeLeftTurn():
+    input("Please turn me to the left and press Enter to continue")
     
-    while readColors:
-        reading1 = ReadAll()
-        reading2 = ReadAll()
-        reading3 = ReadAll()
-        if reading1 == reading2 and reading2 == reading3:
-            return reading1
+def makeRightTurn():
+    input("Please turn me to the right and press Enter to continue")
 
-    return ReadAll()
-
-def printReading(reading):
-    print("Readings:")
-    for i in range(0,8):
-        print("Sensor " + str(i) + " = " + str(reading[i]))
+# ===== End Decision Functions =====
 
 if __name__ == "__main__":
     gpioSetup()
-    print("Start")
-    for i in range(0,50):
+    print("Starting")
+    while state != "Finish":
         followLine()
-        # reading = ReadAllAccurate()
-        # printReading(reading)
-    print("End")
-    # printReading(ReadAllAccurate())
-    # print("Start")
-    # followLine()
-    # sleep(3)
-    # stopAll()
-    # print("Stop")
-    GPIO.cleanup()
+    print("Found end of maze!")
+    print("The path taken was: " + path)
+    gpioCleanup()
