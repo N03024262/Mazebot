@@ -1,7 +1,3 @@
-# Empty space so I don't have to crane my neck to look up high.
-
-
-
 # This is commented out so the code can be run without using the bot
 import RPi.GPIO as GPIO
 GPIO.setmode(GPIO.BOARD)
@@ -13,7 +9,13 @@ import time
 from time import sleep
 
 pulse = True # Controls if movement functions stop after a brief period of running
-pulseTime = .05 # Controls the amount of time movement functions run for when pulsing
+
+# Change these depending on battery strength
+pulseTime = .075 # Controls the amount of time movement functions run for when pulsing
+# The amount of pulses when turning/Uturning/checking for S
+turnPulses = 25
+uTurnPulses = 50
+sCheckPulses = 5
 
 pins = [22, 32, 29, 31, 15, 13, 11, 7] # Pins for the sensor bar
 run = True
@@ -23,10 +25,12 @@ readColors = True # When true ReadAll() will return the color values (0 = White,
 # -----------
 
 # Global values. I should change this later when I'm better with python
-state = "FollowLine"
+global state
+state  = "firstRun"
+global path
 path = ""
 
-intersection = ""
+# ======= Motor Functions =======
 
 MLE = 40 # Motor Left E
 MLA = 38 # Motor Left A
@@ -36,7 +40,6 @@ MRE = 33 # Motor Right E
 MRA = 35 # Motor Right A
 MRB = 37 # Motor Right B
 
-# ======= Motor Functions =======
 def gpioSetup(): # Run this at start to set up the GPIO pins for the motors
     if runWithBot == True:
         GPIO.setup(MLE,GPIO.OUT)
@@ -70,6 +73,7 @@ def forward(): # Sets motors to forward, if pulse is true it will stop shortly a
         if pulse == True:
             sleep(pulseTime)
             stopAll()
+            sleep(pulseTime)
     else:
         print("Move forward")
 
@@ -86,6 +90,7 @@ def backward(): # Sets motors to backward, if pulse is true it will stop shortly
         if pulse == True:
             sleep(pulseTime)
             stopAll()
+            sleep(pulseTime)
     else:
         print("Move backward")
 
@@ -100,6 +105,7 @@ def adjustLeft():
         if pulse == True:
             sleep(pulseTime)
             stopAll()
+            sleep(pulseTime)
     else:
         print("Adjust left")
 
@@ -114,8 +120,26 @@ def adjustRight():
         if pulse == True:
             sleep(pulseTime)
             stopAll()
+            sleep(pulseTime)
     else:
         print("Adjust right")
+
+def turnLeft():
+    if runWithBot == True:
+        GPIO.output(MLE,GPIO.HIGH)
+        GPIO.output(MLA,GPIO.LOW)
+        GPIO.output(MLB,GPIO.HIGH)
+        
+        GPIO.output(MRE,GPIO.HIGH)
+        GPIO.output(MRA,GPIO.HIGH)
+        GPIO.output(MRB,GPIO.LOW)
+        print("Motors turn left")
+        if pulse == True:
+            sleep(pulseTime)
+            stopAll()
+            sleep(pulseTime)
+    else:
+        print("Turn left")
 
 def turnRight():
     if runWithBot == True:
@@ -135,19 +159,6 @@ def turnRight():
     else:
         print("Turn right")
 
-def turnLeft():
-    if runWithBot == True:
-        GPIO.output(MLE,GPIO.HIGH)
-        GPIO.output(MLA,GPIO.LOW)
-        GPIO.output(MLB,GPIO.HIGH)
-        
-        GPIO.output(MRE,GPIO.HIGH)
-        GPIO.output(MRA,GPIO.HIGH)
-        GPIO.output(MRB,GPIO.LOW)
-        print("Motors turn left")
-    else:
-        print("Turn left")
-
 def stopAll():
     if runWithBot == True:
         GPIO.output(MLE,GPIO.LOW)
@@ -164,7 +175,7 @@ def readSensors():
         readingString = ""
         for i in range(0,8):
             readingString = readingString + str(readingArray[i])
-        printReading(readingArray)
+        # printReading(readingArray)
         return readingString
     else:
         manualReading = input("Enter a sensor reading: ")
@@ -243,10 +254,12 @@ def printReading(reading):
 # ======= State Functions =======
 
 def followLine():
-    # This follows the line and changes the state if it thinks it got to an intersection or
-    # the finish.
+    # This follows the line or handles an intersection
     global state
-    reading = readSensors()
+    try: 
+        reading = readSensors()
+    except KeyboardInterrupt:
+        reading = ""
     # ///// These are for staying on the line /////
     # ----- Adjust cases for 1 black -----
     # Adjust left
@@ -311,16 +324,27 @@ def followLine():
         makeDecision(reading)
     elif reading == "11111000":
         makeDecision(reading)
+    elif reading == "11111100":
+        makeDecision(reading)
     # Intersection with left and right choice
     elif reading == "11111111":
         makeDecision(reading)
     # Intersection with right choice
+    elif reading == "00111111":
+        makeDecision(reading)
     elif reading == "00011111":
         makeDecision(reading)
     elif reading == "00001111":
         makeDecision(reading)
     # Came to the end of the line
     elif reading == "00000000":
+        makeDecision(reading)
+    # Manual readings
+    elif reading == "L":
+        makeDecision(reading)
+    elif reading == "R":
+        makeDecision(reading)
+    elif reading == "LR":
         makeDecision(reading)
 
     # ----- End state cases -----
@@ -372,94 +396,225 @@ def followLine():
 # ======= Decision Functions =======
 def makeDecision(reading):
     global path
+    global state
+    doubleCheck = "" # input("I'm reading " + reading + ", is this correct? (enter/n)")
+    if doubleCheck == "":
+        if reading == "00000000":
+            if state == "firstRun":
+                if doubleCheck == "":
+                    makeUTurn()
+                    path = path + "U"
+                    print("Path taken was updated by adding choice U")
+                    print("Path: " + path)
+                    input()
+                elif doubleCheck == "n":
+                    print("Let's try that again")
+            elif state == "secondRun":
+                if doubleCheck == "":
+                    input("This shouldn't happen")
+                elif doubleCheck == "n":
+                    input("Put me back on the line and press enter.")
+                
+        
+        # ----- Intersections with left choice and/or straight option
+        elif reading == "11110000" or reading == "11111000" or reading == "11111100" or reading =="L":
+            intersectionL()
+        # ----- Intersections with left and right and/or straight option
+        elif reading == "11111111" or reading == "LR":
+            intersectionLR()
+        # ----- Intersections with right and maybe straight
+        elif reading == "00011111" or reading == "00001111" or reading == "00111111" or reading == "R":
+            intersectionR()
+        # Handles unexpected results.
+        else:
+            print("Encountered an unknown result but it should have already been caught...")
+    elif doubleCheck == "n":
+        input("Trying again")
 
-    if reading == "00000000":
-        doubleCheck = input("I'm reading 00000000, is this correct? (y/n)")
-        if doubleCheck == "y":
-            makeUTurn()
-            path = path + "U"
-            print("Path taken was updated by adding choice U")
-            print("Path: " + path)
-        elif doubleCheck == "n":
-            print("Let's try that again")
-    
-    # ----- Intersections with left choice and/or straight option
-    elif reading == "11110000" or reading == "11111000":
-        if checkForS() == True:
-            print("Options given are: Left and Straight")
+# Handles an intersection with an L
+def intersectionL():
+    global path
+    if checkForS() == True:
+        print("Option(s) given are: Left and Straight")
+        if state == "firstRun":
             makeLeftTurn()
-            path = path + "L"
-            print("Path taken was updated by adding choice L")
-            print("Path: " + path)
-        else:
-            print("Options given are: Left")
-            makeLeftTurn()
-            print("Left turn was taken but path was not update sind L was only option.")
-    # ----- Intersections with left and right and maybe straight
-    elif reading == "11111111":
-        if checkForS() == True:
-            print("Options given are: Left, Right, and Straight")
-            makeLeftTurn()
-            path = path + "L"
-            print("Path taken was updated by adding choice L")
-            print("Path: " + path)
-        else:
-            print("Options given are: Left and Right")
-            makeLeftTurn()
-            path = path + "L"
-            print("Path taken was updated by adding choice L")
-            print("Path: " + path)
-    # ----- Intersections with right and maybe straight
-    elif reading == "00011111" or reading == "00001111":
-        if checkForS() == True:
-            print("Options given are: Right and Straight")
-            makeStraight()
-            path = path + "S"
-            print("Path taken was updated by adding choice S")
-            print("Path: " + path)
-        else:
-            print("Options given are: Right")
-            makeRightTurn()
-            print("Left turn was taken but path was not update sind R was only option.")
-
-    # Handles unexpected results.
+            addPath("L")
+        elif state == "secondRun":
+            pathList = list(path)
+            choice = pathList.pop(0)
+            path = ''.join(pathList)
+            if choice == "L":
+                makeLeftTurn()
+            elif choice == "S":
+                makeStraight()
     else:
-        print("Encountered an unknown result but it should have already been caught...")
+        print("Option(s) given are: Left")
+        makeLeftTurn()
 
-def followPath(reading):
-    pass
+# Handles an intersection with an R
+def intersectionR():
+    global path
+    if checkForS() == True:
+        print("Option(s) given are: Right and Straight")
+        if state == "firstRun":
+            makeStraight()
+            addPath("S")
+        elif state == "secondRun":
+            pathList = list(path)
+            choice = pathList.pop(0)
+            path = ''.join(pathList)
+            if choice == "R":
+                makeRightTurn()
+            elif choice == "S":
+                makeStraight()
+    else:
+        print("Option(s) given are: Right")
+        makeRightTurn()
+
+# Handles an intersection with an L and R
+def intersectionLR():
+    global path
+    if checkForS() == True:
+        print("Option(s) given are: Left, Right, and Straight")
+        if state == "firstRun":
+            makeLeftTurn()
+            addPath("L")
+        elif state == "secondRun":
+            pathList = list(path)
+            choice = pathList.pop(0)
+            path = ''.join(pathList)
+            if choice == "L":
+                makeLeftTurn()
+            elif choice == "S":
+                makeStraight()
+            elif choice == "R":
+                makeRightTurn()
+    else:
+        print("Option(s) given are: Left and Right")
+        if state == "firstRun":
+            makeLeftTurn()
+            addPath("L")
+        elif state == "secondRun":
+            pathList = list(path)
+            choice = pathList.pop(0)
+            path = ''.join(pathList)
+            if choice == "L":
+                makeLeftTurn()
+            elif choice == "R":
+                makeRightTurn()
+
+def addPath(choice):
+    global path
+    path = path + choice
+    print("Path is now: " + path)
 
 def checkForS():
-    isS = input("Is straight an option?\n(y/n): ")
-    if isS == "y":
-        return True
-    elif isS == "n":
-        return False
-    else:
-        print("Please enter a valid answer")
-        return checkForS()
+    if runWithBot == True:
+        for i in range (0,sCheckPulses):
+            forward()
+            sleep(.1)
+        reading = readSensors()
+        if reading != "00000000":
+            return True
+        elif reading:
+            return False
+    elif runWithBot == False:
+        isS = input("Is straight an option? (y/n): ")
+        if isS == "y":
+            return True
+        elif isS == "n":
+            return False
+        else:
+            print("Please enter a valid answer")
+            return checkForS()
 
 def makeUTurn():
-    input("Please turn me around and press Enter to continue")
+    if runWithBot == True:
+        for i in range (0, uTurnPulses):
+            turnLeft()
+            sleep(.1)
+        input("Please turn me around and press Enter to continue")
+    else:
+        print("Make U-turn")
 
 def makeStraight():
-    input("Please move me slightly forward onto the S option and press Enter to continue")
+    # input("Please move me slightly forward onto the S option and press Enter to continue")
+    if runWithBot == True:
+        pass
+    else:
+        print("Continue straight")
 
 def makeLeftTurn():
-    input("Please turn me to the left and press Enter to continue")
-    
-def makeRightTurn():
-    input("Please turn me to the right and press Enter to continue")
+    # input("Please turn me to the left and press Enter to continue")
+    if runWithBot == True:
+        for i in range (0, turnPulses):
+            turnLeft()
+            sleep(.1)
+    else:
+        print("Make left turn")
 
+def makeRightTurn():
+    # input("Please turn me to the right and press Enter to continue")
+    if runWithBot == True:
+        for i in range (0, turnPulses):
+            turnRight()
+            sleep(.1)
+    else:
+        print("Make right turn")
 # ===== End Decision Functions =====
+
+def fasterPath(shorterPath):
+    global path
+    print("Was given path: " + shorterPath)
+    shorterPath = list(shorterPath)
+    while shorterPath.count("U") > 0:
+        i = shorterPath.index("U")
+        if shorterPath[i - 1] == "L":
+            if shorterPath[i + 1] == "L":
+                shorterPath[i] = "S"
+                del shorterPath[i + 1]
+                del shorterPath[i - 1]
+            elif shorterPath[i + 1] == "S":
+                shorterPath[i] = "R"
+                del shorterPath[i + 1]
+                del shorterPath[i - 1]
+                
+        elif shorterPath[i - 1] == "S":
+            if shorterPath[i + 1] == "L":
+                shorterPath[i] = "R"
+                del shorterPath[i + 1]
+                del shorterPath[i - 1]
+                
+            elif shorterPath[i + 1] == "S":
+                shorterPath[i] = "U"
+                del shorterPath[i + 1]
+                del shorterPath[i - 1]
+                
+        elif shorterPath[i - 1] == "R":
+            if shorterPath[i + 1] == "L":
+                shorterPath[i] = "U"
+                del shorterPath[i + 1]
+                del shorterPath[i - 1]
+        print(''.join(shorterPath))
+    print("Found that this path was faster: " + ''.join(shorterPath))
+    path = ''.join(shorterPath)
 
 if __name__ == "__main__":
     gpioSetup()
-    print("Starting")
+    input("Starting Maze First run")
     while state != "Finish":
         followLine()
-    # for i in range(0,15):
-    #     turnRight()
     print("Found end of maze!")
     print("The path taken was: " + path)
+    fasterPath(path)
+    input("Press enter to start second run")
+    state = "secondRun"
+    while state != "Finish":
+        followLine()
+
     gpioCleanup()
+
+                    
+
+
+
