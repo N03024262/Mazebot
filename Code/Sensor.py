@@ -2,67 +2,22 @@
 
 
 
+# This is commented out so the code can be run without using the bot
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BOARD)
+# Uncomment this to run the bot
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# # This is commented out so the code can be run without using the bot
-# import RPi.GPIO as GPIO
-# GPIO.setmode(GPIO.BOARD)
-# # Uncomment this to run the bot
-
-runWithBot = False # Set to true to make the bot move, set to false to run code as theoretical
+runWithBot = True # Set to true to make the bot move, set to false to run code as theoretical
 
 import time
 from time import sleep
 
 pulse = True # Controls if movement functions stop after a brief period of running
-pulseTime = .25 # Controls the amount of time movement functions run for when pulsing
+pulseTime = .05 # Controls the amount of time movement functions run for when pulsing
 
-pin = [22, 32, 29, 31, 15, 13, 11, 7] # Pins for the sensor bar
+pins = [22, 32, 29, 31, 15, 13, 11, 7] # Pins for the sensor bar
 run = True
-threshold = 0.01045 # The maximum value that can be white as opposed to black
+threshold = 0.0007 # The maximum value that can be white as opposed to black
 readColors = True # When true ReadAll() will return the color values (0 = White, 1 = Black) and when False ReadAll() will return time data
 
 # -----------
@@ -172,6 +127,11 @@ def turnRight():
         GPIO.output(MRA,GPIO.LOW)
         GPIO.output(MRB,GPIO.HIGH)
         print("Motors turn right")
+        if pulse == True:
+            sleep(pulseTime)
+            stopAll()
+            sleep(pulseTime)
+
     else:
         print("Turn right")
 
@@ -227,12 +187,12 @@ def ReadAll(): # This function returns readings from the light sensor
     # Wait for the capacitor to charge.
     time.sleep(0.01)
 
+    # Record the starting time
+    starttime = time.time()
+
     # Set pins to input
     for pin in range(0,8):
         GPIO.setup(pins[pin], GPIO.IN)
-    
-    # Record the starting time
-    starttime = time.time()
     
     # This loop runs until every sensor reads low
     while (check[0] and check[1] and check[2] and check[3] and check[4] and check[5] and check[6] and check[7]) == False:
@@ -265,7 +225,10 @@ def ReadAllAccurate():
         reading1 = ReadAll()
         reading2 = ReadAll()
         reading3 = ReadAll()
-        if reading1 == reading2 and reading2 == reading3:
+        reading4 = ReadAll()
+        reading5 = ReadAll()
+        reading6 = ReadAll()
+        if reading1 == reading2 and reading3 == reading4 and reading5 == reading6 and reading1 == reading3 and reading3 == reading5:
             return reading1
 
     # Just returns the raw times from one check when not returning colors.
@@ -411,10 +374,14 @@ def makeDecision(reading):
     global path
 
     if reading == "00000000":
-        makeUTurn()
-        path = path + "U"
-        print("Path taken was updated by adding choice U")
-        print("Path: " + path)
+        doubleCheck = input("I'm reading 00000000, is this correct? (y/n)")
+        if doubleCheck == "y":
+            makeUTurn()
+            path = path + "U"
+            print("Path taken was updated by adding choice U")
+            print("Path: " + path)
+        elif doubleCheck == "n":
+            print("Let's try that again")
     
     # ----- Intersections with left choice and/or straight option
     elif reading == "11110000" or reading == "11111000":
@@ -491,6 +458,8 @@ if __name__ == "__main__":
     print("Starting")
     while state != "Finish":
         followLine()
+    # for i in range(0,15):
+    #     turnRight()
     print("Found end of maze!")
     print("The path taken was: " + path)
     gpioCleanup()
